@@ -22,8 +22,9 @@ setup(
         'requests>=2.20',
         'inflection>=0.3,<0.4',
         'attrs>=18.2',
-        'python-freeipa',
-        'click'
+        'python-freeipa>=0.2,<0.3',
+        'click>=7.0,<7.1',
+        'inject>=3.4,<3.5'
     ],
     extras_require={
         'test': [
@@ -31,6 +32,9 @@ setup(
             'pytest',
             'responses',
         ]
+    },
+    entry_points={
+        'console_scripts': ['migrate = migrate.cli:main'],
     },
     description='FreeIPA backup and migration',
     long_description=open('README.rst').read(),
