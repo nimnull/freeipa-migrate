@@ -1,3 +1,4 @@
+import os
 import click as click
 import inject
 import python_freeipa
@@ -7,10 +8,10 @@ from migrate import reader
 
 
 def my_config(binder):
-    hostname = 'localhost'
+    hostname = os.getenv('IPA_HOST')
     client = python_freeipa.Client(hostname, verify_ssl=False)
-    creds = ('login', 'password')
-    client.login(*creds)
+
+    client.login(os.getenv('IPA_LOGIN'), os.getenv('IPA_PASSWORD'))
 
     binder.bind(python_freeipa.Client, client)
     requests.packages.urllib3.disable_warnings()

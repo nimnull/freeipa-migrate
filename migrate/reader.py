@@ -13,10 +13,10 @@ class MissingCalls:
         'caacl_find': {'all': True, 'raw': False},
         'caacl_show': {'rights': True, 'all': True, 'raw': False},
 
-        'cert_find': {},
-        'cert_show': {},
-        'certprofile_find': {},
-        'certprofile_show': {},
+        'cert_find': {'all': True, 'raw': False},
+        'cert_show': {},  # serial_number
+        'certprofile_find': {'all': True, 'raw': False, 'sizelimit': 0},
+        'certprofile_show': {'all': True, 'raw': False, 'rights': True},  # cn
 
         'config_show': {'all': True, 'raw': False, 'rights': True},
 
@@ -31,9 +31,9 @@ class MissingCalls:
         'dnsforwardzone_show': {'all': True, 'raw': False, 'rights': True},
         'dnsrecord_find': {'all': True, 'raw': False},
         'dnsrecord_show': {'all': True, 'raw': False, 'rights': True, 'structured': True},
-        'dnszone_find': {},
-        'dnszone_show': {},
-        'domainlevel_get': {},
+        'dnszone_find': {'forward_only': False, 'sizelimit': 0, 'all': True, 'raw': False},
+        'dnszone_show': {'all': True, 'raw': False, 'rights': True},
+
         'env': {'all': True},
 
         'group_find': {'all': True, 'sizelimit': 0},
@@ -47,11 +47,53 @@ class MissingCalls:
         },
         'hbacrule_show': {'all': True, 'raw': False, 'rights': True},
 
-        'hbacsvc_find': {},
-        'hbacsvc_show': {},
+        'hbacsvc_find': {'no_members': True, 'all': True, 'raw': False, },
+        'hbacsvc_show': {'no_members': True, 'all': True, 'raw': False, 'rights': True},  # cn
 
-        'hbacsvcgroup_find': {},
-        'hbacsvcgroup_show': {},
+        'hbacsvcgroup_find': {'no_members': True, 'all': True, 'raw': False, },
+        'hbacsvcgroup_show': {'no_members': True, 'all': True, 'raw': False, 'rights': True},  # cn
+
+        'host_find': {'all': True, 'raw': False, 'sizelimit': 0, 'timelimit': 0},
+        'host_show': {'all': True, 'raw': False, 'rights': True},
+
+        'hostgroup_find': {'all': True, 'raw': False, 'sizelimit': 0},
+        'hostgroup_show': {'all': True, 'raw': False, 'rights': True},
+
+        'idrange_find': {'all': True, 'raw': False, 'sizelimit': 0},
+        'idrange_show': {'all': True, 'raw': False, 'rights': True},  # cn
+
+        'krbtpolicy_show': {'rights': True, 'all': True, 'raw': False},
+
+        'netgroup_find': {'all': True, 'raw': False, 'sizelimit': 0},
+        'netgroup_show': {'rights': True, 'all': True, 'raw': False},  # cn
+
+        'otpconfig_show': {'rights': True, 'all': True, 'raw': False},
+
+        'pwpolicy_show': {'all': True, 'raw': False, 'rights': True},
+
+        'permission_find': {'sizelimit': 0, 'all': True, 'raw': False, 'no_members': True},
+        'permission_show': {'rights': True, 'all': True, 'raw': False},  # cn
+
+        'realmdomains_show': {'all': True, 'raw': False, 'rights': True},
+
+        'role_find': {'sizelimit': 0, 'all': True, 'raw': False, 'no_members': True},
+        'role_show': {'rights': True, 'all': True, 'raw': False, 'no_members': True},  # cn
+
+        'selfservice_find': {'all': True, 'raw': False},
+        'selfservice_show': {'all': True, 'raw': False},  # aciname
+
+        'servicedelegationrule_find': {'sizelimit': 0, 'all': True, 'raw': False, 'no_members': True},
+        'servicedelegationrule_show': {'rights': True, 'all': True, 'raw': False, 'no_members': True},  # cn
+        'servicedelegationtarget_find': {'all': True, 'raw': False, 'sizelimit': 0},
+        'servicedelegationtarget_show': {'rights': True, 'all': True, 'raw': False},  # cn
+
+        'stageuser_find': {'sizelimit': 0, 'all': True, 'raw': False, 'no_members': True},
+        'stageuser_show': {'rights': True, 'all': True, 'raw': False, 'no_members': True},  # uid
+
+        'sudocmdgroup_find': {'sizelimit': 0, 'all': True, 'raw': False, 'no_members': True},
+        'sudocmdgroup_show': {'rights': True, 'all': True, 'raw': False, 'no_members': True},  # cn
+        'sudorule_find': {'sizelimit': 0, 'all': True, 'raw': False, 'no_members': True},
+        'sudorule_show': {'rights': True, 'all': True, 'raw': False, 'no_members': True},  # cn
 
         'user_find': {
             'all': True,
@@ -61,11 +103,6 @@ class MissingCalls:
         },
         'user_show': {'all': True, 'raw': False},
 
-        'hostgroup_find': {'all': True, 'raw': False, 'sizelimit': 0},
-        'hostgroup_show': {'all': True, 'raw': False, 'rights': True},
-
-        'host_find': {'all': True, 'raw': False, 'sizelimit': 0, 'timelimit': 0},
-        'host_show': {'all': True, 'raw': False, 'rights': True},
     }
 
     def __init__(self, client):
@@ -89,42 +126,53 @@ class MissingCalls:
 def store_ipa_db(client: Client = None):
     cl = MissingCalls(client)
 
-    ca_acl_srv = cl.caacl_find()
-    ca_acls = [cl.caacl_show(ca_acl['cn']) for ca_acl in ca_acl_srv]
-
-    automember_serv = cl.automember_find(params={'type': 'hostgroup'})
-    automembers = [cl.automember_show(am['cn'], {'type': 'hostgroup'}) for am in automember_serv]
-
-    usergroups_srv = cl.group_find()
-    usergroups = [cl.group_show(group['cn']) for group in usergroups_srv]
-
-    users_srv = cl.user_find()
-    users = [cl.user_show(user['uid']) for user in users_srv]
-
-    hostgroups_srv = cl.hostgroup_find()
-    hostgroups = [cl.hostgroup_show(hg['cn']) for hg in hostgroups_srv]
-
-    hbacrules_srv = cl.hbacrule_find()
-    hbacrules = [cl.hbacrule_show(rule['cn']) for rule in hbacrules_srv]
-
-    hosts_srv = cl.host_find()
-    hosts = [cl.host_show(h['fqdn'][0]) for h in hosts_srv]
-
     with shelve.open('ipa_dump.db') as storage:
-        storage['automembers'] = automembers
-        storage['ca_acls'] = ca_acls
-        storage['hostgroups'] = hostgroups
-        storage['hosts'] = hosts
-        storage['hbacrules'] = hbacrules
-        storage['usergroups'] = usergroups
-        storage['users'] = users
+        storage['automembers'] = [
+            cl.automember_show(am['cn'], {'type': 'hostgroup'})
+            for am in cl.automember_find(params={'type': 'hostgroup'})
+        ]
+        storage['ca_acls'] = [
+            cl.caacl_show(ca_acl['cn'])
+            for ca_acl in cl.caacl_find()
+        ]
+        storage['certs'] = [
+            cl.cert_show(crt['serial_number'])
+            for crt in cl.cert_find()
+        ]
+
+        storage['certprofiles'] = [
+            cl.certprofile_show(cert_p['cn'])
+            for cert_p in cl.certprofile_find()
+        ]
+
+        storage['hostgroups'] = [
+            cl.hostgroup_show(hg['cn'])
+            for hg in cl.hostgroup_find()
+        ]
+        storage['hosts'] = [
+            cl.host_show(h['fqdn'][0])
+            for h in cl.host_find()
+        ]
+        storage['hbacrules'] = [
+            cl.hbacrule_show(rule['cn'])
+            for rule in cl.hbacrule_find()
+        ]
+        storage['dns_zones'] = [
+            cl.dnszone_show(zone['idnsname'])
+            for zone in cl.dnszone_find()
+        ]
+        storage['netgroups'] = [
+            cl.netgroup_show(g['cn'], params={'no_members': True})
+            for g in cl.netgroup_find(params={'no_members': True, 'managed': True, 'private': True})
+        ]
+        storage['users'] = [
+            cl.user_show(user['uid'])
+            for user in cl.user_find()
+        ]
+        storage['usergroups'] = [
+            cl.group_show(group['cn'])
+            for group in cl.group_find()
+        ]
+
+        storage['realmdomains'] = cl.realmdomains_show([])
         storage.sync()
-
-
-"""
-Group:
-member_user: [<user>, <user>],
-memberof_hbacrule: []
-
-
-"""
