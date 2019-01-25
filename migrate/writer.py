@@ -1,8 +1,15 @@
+import pprint
+import re
+from itertools import chain
+
 import click
 import inject
 import python_freeipa.exceptions
 
 from python_freeipa import Client
+
+
+ZONE_RE = re.compile(r'idnsname=(?P<dns_zone>[\w\-.]+)', re.IGNORECASE)
 
 
 class WriterAPI:
@@ -55,21 +62,43 @@ class WriterAPI:
                                     args=[idnsname],
                                     params=params)
 
-    def dnsrecord_add(self, dns_record: dict):
-        dnszoneidnsname = None
+    def dnsrecord_add(self, record: dict):
+        idnsname = record['idnsname'][0]
+        #
+        dn_parts = record['dn'].split(',')
 
-        required_params = [
-            'idnsname'
-        ]
+        zero = ZONE_RE.match(dn_parts[0])
+        first = ZONE_RE.match(dn_parts[1])
+        if first is not None:
+            dnszoneidnsname = first.groupdict()['dns_zone']
+        elif zero is not None:
+            dnszoneidnsname = zero.groupdict()['dns_zone']
+        else:
+            print(record)
+            raise ValueError(f"Can't detect DNS zone {record['dn']}")
+
         optional_params = [
-            'idnsallowquery',
-            'idnsallowtransfer',
-            'idnsforwarders',
-            'idnssoamname'
+            'arecord',
+            'srvrecord',
+            'txtrecord',
+            'cnamerecord',
+            'ptrrecord',
+            'nsrecord'
         ]
+        mv_params = [
+            'nsrecord'
+        ]
+        params = dict(
+            (parameter, record[parameter][0]) for parameter in optional_params
+            if parameter in record
+        )
+        params_mv = dict(
+            (parameter, record[parameter]) for parameter in mv_params
+            if parameter in record
+        )
+        params.update(params_mv)
 
-        params = {}
-        return self.client._request('dnsrecord_add', args=[dnszoneidnsname], params=params)
+        return self.client._request('dnsrecord_add', args=[dnszoneidnsname, idnsname], params=params)
 
 
 @inject.params(client=Client)
@@ -85,8 +114,12 @@ def write_data(stored_data, client: Client = None):
         click.secho(f"Processing {attribute}", fg='yellow')
 
         errors, success = [], []
+        # keys = []
         for record in stored_data[attribute]:
+            # keys.append(record.keys())
+
             try:
+                pass
                 resp = callee(record)
                 success.append(resp)
                 # TODO: check response
@@ -94,7 +127,9 @@ def write_data(stored_data, client: Client = None):
                 click.secho(f"{err}, {record}", fg='red')
                 errors.append((record, err))
 
-        click.secho(f"Restored {len(success)} zones", fg='green')
+        # print(set(list(chain.from_iterable(keys))))
+
+        click.secho(f"Restored {len(success)} records", fg='green')
 
 
 """
