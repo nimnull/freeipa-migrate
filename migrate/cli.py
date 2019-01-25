@@ -1,10 +1,12 @@
 import os
+import shelve
+
 import click as click
 import inject
 import python_freeipa
 import requests
 
-from migrate import reader
+from migrate import reader, writer
 
 
 def my_config(binder):
@@ -23,8 +25,17 @@ def main():
 
 
 @main.command()
-def read():
-    reader.store_ipa_db()
+@click.argument('database_file', nargs=1, type=click.Path())
+def dump(database_file):
+    reader.store_ipa_db(database_file)
+
+
+@main.command()
+@click.argument('database_file', nargs=1, type=click.Path(exists=True))
+def restore(database_file):
+
+    with shelve.open(database_file) as storage:
+        writer.write_data(storage)
 
 
 if __name__ == '__main__':
