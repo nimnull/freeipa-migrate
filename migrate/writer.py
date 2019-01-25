@@ -55,21 +55,46 @@ class WriterAPI:
                                     args=[idnsname],
                                     params=params)
 
+    def dnsrecord_add(self, dns_record: dict):
+        dnszoneidnsname = None
+
+        required_params = [
+            'idnsname'
+        ]
+        optional_params = [
+            'idnsallowquery',
+            'idnsallowtransfer',
+            'idnsforwarders',
+            'idnssoamname'
+        ]
+
+        params = {}
+        return self.client._request('dnsrecord_add', args=[dnszoneidnsname], params=params)
+
 
 @inject.params(client=Client)
 def write_data(stored_data, client: Client = None):
     writer = WriterAPI(client)
 
-    errors = []
-    for zone in stored_data['dns_zones']:
-        try:
-            resp = writer.dnszone_add(zone)
-            import ipdb; ipdb.set_trace()
-        except python_freeipa.exceptions.BadRequest as err:
-            click.secho(f"{err}, {zone}", fg='red')
-            errors.append((zone, err))
+    attrs_calls_map = {
+        'dns_zones': writer.dnszone_add,
+        'dns_records': writer.dnsrecord_add
+    }
 
-    click.secho(f"Restored {len(stored_data['dns_zones'])} zones", fg='green')
+    for attribute, callee in attrs_calls_map.items():
+        click.secho(f"Processing {attribute}", fg='yellow')
+
+        errors, success = [], []
+        for record in stored_data[attribute]:
+            try:
+                resp = callee(record)
+                success.append(resp)
+                # TODO: check response
+            except python_freeipa.exceptions.BadRequest as err:
+                click.secho(f"{err}, {record}", fg='red')
+                errors.append((record, err))
+
+        click.secho(f"Restored {len(success)} zones", fg='green')
 
 
 """
